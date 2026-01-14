@@ -24,6 +24,7 @@ apt-get install -y python3-pip python3-dev python3-venv git can-utils
 # when the device is connected. No Raspberry Pi-specific configuration needed.
 
 # Configure CAN network interface
+mkdir -p /etc/network/interfaces.d
 cat > /etc/network/interfaces.d/can0 <<EOF
 auto can0
 iface can0 inet manual
