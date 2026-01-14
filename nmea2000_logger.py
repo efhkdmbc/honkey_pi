@@ -108,7 +108,6 @@ class NMEA2000DataLogger:
                         value = field.get('value')
                         if isinstance(value, (int, float)):
                             self.data_buffer['BSP'] = value
-                            self.data_buffer['SOG'] = value  # Also update SOG if no GPS
             
             # PGN 128267 - Water Depth  
             elif pgn == 128267:
@@ -177,7 +176,8 @@ class NMEA2000DataLogger:
                     value = field.get('value')
                     if isinstance(value, (int, float)):
                         if field_id == 'temperature':
-                            temp_source = field.get('temperature_source')
+                            # Check if temperature_source field exists
+                            temp_source = field.get('temperature_source', '')
                             if temp_source == 'Sea Temperature':
                                 self.data_buffer['SeaTemp'] = value
                             elif temp_source == 'Outside Temperature':
@@ -197,12 +197,14 @@ class NMEA2000DataLogger:
     
     def _logging_loop(self) -> None:
         """Background thread that logs data at 1 Hz"""
+        start_time = time.time()
+        iteration = 0
+        
         while self.logging_active:
             try:
-                loop_start = time.time()
-                
-                # Calculate next log time (aligned to whole seconds)
-                target_time = loop_start + 1.0
+                # Calculate target time to prevent drift accumulation
+                iteration += 1
+                target_time = start_time + iteration
                 
                 # Create row with current timestamp
                 with self.buffer_lock:
