@@ -114,25 +114,27 @@ echo "========================================="
 # Test 6: Verify path comparison logic
 echo ""
 echo "Test 6: Path comparison for same directory detection"
+echo "  Case 1: Same directory (should skip copy)"
 SCRIPT_DIR="/home/testuser/honkey_pi"
 INSTALL_DIR="/home/testuser/honkey_pi"
-echo "  SCRIPT_DIR=$SCRIPT_DIR"
-echo "  INSTALL_DIR=$INSTALL_DIR"
+echo "    SCRIPT_DIR=$SCRIPT_DIR"
+echo "    INSTALL_DIR=$INSTALL_DIR"
 if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
-    echo "  ✗ FAIL: Should detect same directory"
+    echo "    ✗ FAIL: Directories are same, should NOT copy"
     exit 1
 else
-    echo "  ✓ PASS: Correctly detects same directory (will skip copy)"
+    echo "    ✓ PASS: Correctly detects same directory (will skip copy)"
 fi
 
+echo "  Case 2: Different directories (should copy)"
 SCRIPT_DIR="/home/testuser/project"
 INSTALL_DIR="/home/testuser/honkey_pi"
-echo "  SCRIPT_DIR=$SCRIPT_DIR"
-echo "  INSTALL_DIR=$INSTALL_DIR"
+echo "    SCRIPT_DIR=$SCRIPT_DIR"
+echo "    INSTALL_DIR=$INSTALL_DIR"
 if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
-    echo "  ✓ PASS: Correctly detects different directories (will copy)"
+    echo "    ✓ PASS: Correctly detects different directories (will copy)"
 else
-    echo "  ✗ FAIL: Should detect different directories"
+    echo "    ✗ FAIL: Directories are different, should copy"
     exit 1
 fi
 
