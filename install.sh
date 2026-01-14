@@ -14,6 +14,19 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Detect the user who invoked sudo (or fall back to current user)
+if [ -n "$SUDO_USER" ]; then
+    INSTALL_USER="$SUDO_USER"
+elif [ -n "$USER" ] && [ "$USER" != "root" ]; then
+    INSTALL_USER="$USER"
+else
+    # Default to 'pi' if we can't determine the user
+    INSTALL_USER="pi"
+    echo "Warning: Could not detect invoking user, defaulting to 'pi'"
+fi
+
+echo "Installing for user: $INSTALL_USER"
+
 # Install system dependencies
 echo "Installing system dependencies..."
 apt-get update
@@ -22,6 +35,10 @@ apt-get install -y python3-pip python3-dev python3-venv git can-utils
 # Note: USB-CAN-A is a USB device and does not require device tree overlays.
 # The CAN interface will be created automatically by the USB kernel driver
 # when the device is connected. No Raspberry Pi-specific configuration needed.
+
+# Ensure network interfaces directory exists
+echo "Ensuring /etc/network/interfaces.d directory exists..."
+mkdir -p /etc/network/interfaces.d
 
 # Configure CAN network interface
 cat > /etc/network/interfaces.d/can0 <<EOF
@@ -33,34 +50,54 @@ iface can0 inet manual
 EOF
 
 # Create installation directory
-INSTALL_DIR="/home/pi/honkey_pi"
+INSTALL_DIR="/home/$INSTALL_USER/honkey_pi"
 echo "Creating installation directory: $INSTALL_DIR"
-mkdir -p $INSTALL_DIR
+mkdir -p "$INSTALL_DIR"
 
-# Copy files
-echo "Copying application files..."
-cp main.py $INSTALL_DIR/
-cp nmea2000_logger.py $INSTALL_DIR/
-cp display.py $INSTALL_DIR/
-cp config.yaml $INSTALL_DIR/
-cp requirements.txt $INSTALL_DIR/
+# Get the absolute path of the current directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Get canonical absolute paths to handle symlinks and relative paths correctly
+SCRIPT_DIR_CANONICAL="$(cd "$SCRIPT_DIR" && pwd -P 2>/dev/null || pwd)"
+INSTALL_DIR_CANONICAL="$(cd "$INSTALL_DIR" && pwd -P 2>/dev/null || pwd)"
+
+# Copy files only if we're not already in the installation directory
+if [ "$SCRIPT_DIR_CANONICAL" != "$INSTALL_DIR_CANONICAL" ]; then
+    echo "Copying application files from $SCRIPT_DIR to $INSTALL_DIR..."
+    cp "$SCRIPT_DIR/main.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/nmea2000_logger.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/display.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/config.yaml" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/honkey_pi.service" "$INSTALL_DIR"/
+else
+    echo "Already in installation directory, skipping file copy..."
+fi
 
 # Set ownership
-chown -R pi:pi $INSTALL_DIR
+chown -R "$INSTALL_USER":"$INSTALL_USER" "$INSTALL_DIR"
 
-# Install Python dependencies
-echo "Installing Python dependencies..."
-su - pi -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
+# Create Python virtual environment
+echo "Creating Python virtual environment..."
+su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && python3 -m venv venv"
+
+# Install Python dependencies in virtual environment
+echo "Installing Python dependencies in virtual environment..."
+su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && venv/bin/pip install -r requirements.txt"
 
 # Install systemd service
 echo "Installing systemd service..."
-cp honkey_pi.service /etc/systemd/system/
+# Update service file with the correct user, paths, and virtual environment Python
+sed -e "s|User=pi|User=$INSTALL_USER|g" \
+    -e "s|/home/pi/|/home/$INSTALL_USER/|g" \
+    -e "s|/usr/bin/python3|/home/$INSTALL_USER/honkey_pi/venv/bin/python3|g" \
+    "$INSTALL_DIR/honkey_pi.service" > /etc/systemd/system/honkey_pi.service
 systemctl daemon-reload
 
 # Create data directory
-DATA_DIR="/home/pi/honkey_pi_data"
-mkdir -p $DATA_DIR
-chown pi:pi $DATA_DIR
+DATA_DIR="/home/$INSTALL_USER/honkey_pi_data"
+mkdir -p "$DATA_DIR"
+chown "$INSTALL_USER":"$INSTALL_USER" "$DATA_DIR"
 
 echo "========================================="
 echo "Installation complete!"
@@ -75,7 +112,7 @@ echo "To view logs:"
 echo "  sudo journalctl -u honkey_pi -f"
 echo ""
 echo "To test the display:"
-echo "  cd $INSTALL_DIR && python3 main.py --test-display"
+echo "  cd $INSTALL_DIR && venv/bin/python3 main.py --test-display"
 echo ""
 echo "Note: You may need to reboot for CAN interface changes to take effect"
 echo "========================================="
