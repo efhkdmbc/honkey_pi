@@ -1,0 +1,11 @@
+timestamp,pgn,id,description,source,destination,priority,speed_water_referenced,speed_water_referenced_unit,speed_ground_referenced,speed_ground_referenced_unit
+2021-11-14T12:00:00.000000,128259,speed,Speed,1,255,3,12.5,knots,12.3,knots
+2021-11-14T12:00:01.000000,128259,speed,Speed,1,255,3,13.2,knots,13.0,knots
+2021-11-14T12:00:02.000000,128267,waterDepth,Water Depth,2,255,5,15.3,m,,
+2021-11-14T12:00:03.000000,127250,vesselHeading,Vessel Heading,3,255,2,45.5,deg,0.0,deg
+2021-11-14T12:00:04.000000,128259,speed,Speed,1,255,3,14.1,knots,13.9,knots
+2021-11-14T12:00:05.000000,130310,environmentalParameters,Environmental Parameters,4,255,6,21.5,C,1013.2,hPa
+2021-11-14T12:00:06.000000,128267,waterDepth,Water Depth,2,255,5,15.2,m,,
+2021-11-14T12:00:07.000000,127250,vesselHeading,Vessel Heading,3,255,2,46.0,deg,0.0,deg
+2021-11-14T12:00:08.000000,128259,speed,Speed,1,255,3,15.0,knots,14.8,knots
+2021-11-14T12:00:09.000000,129029,gnssPositionData,GNSS Position Data,5,255,3,37.7749,deg,-122.4194,deg

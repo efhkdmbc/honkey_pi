@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Honkey Pi specific
+honkey_pi_data/
+*.csv
+!example_data.csv

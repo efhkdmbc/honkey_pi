@@ -1,0 +1,11 @@
+# NMEA 2000 library for CAN bus communication
+nmea2000>=0.1.0
+
+# Inky pHAT display library
+inky>=1.5.0
+
+# Additional dependencies
+python-can>=4.0.0
+psutil>=5.9.0
+PyYAML>=6.0
+Pillow>=10.2.0
