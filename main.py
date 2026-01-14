@@ -144,6 +144,9 @@ class HonkeyPi:
         
         self.running.set()
         
+        # Start 1 Hz logging thread
+        self.logger.start_logging()
+        
         # Start display update thread
         display_thread = Thread(target=self._display_update_loop, daemon=True)
         display_thread.start()

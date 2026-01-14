@@ -1,22 +1,33 @@
 """
 NMEA 2000 Data Logger for Raspberry Pi Zero
 Reads NMEA 2000 data from USB-CAN-A and logs to CSV format
+with 1 Hz sampling rate and fixed column format.
 """
 
 import csv
 import time
-from datetime import datetime
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict
 
-from nmea2000.usb_client import USBClient
+try:
+    from nmea2000.usb_client import USBClient
+except ImportError:
+    # Allow module to load for testing without hardware
+    USBClient = None
+
+from csv_format import (
+    COLUMN_NAMES, FORMAT_VERSION, DEFAULT_BOAT_ID,
+    create_empty_row, datetime_to_excel_serial
+)
 
 
 class NMEA2000DataLogger:
-    """Logs NMEA 2000 data to CSV files"""
+    """Logs NMEA 2000 data to CSV files with 1 Hz sampling and fixed format"""
 
     def __init__(self, data_directory: str, filename_format: str = "%Y%b%d_%H%M%S.csv",
-                 flush_interval: int = 10):
+                 flush_interval: int = 10, boat_id: str = DEFAULT_BOAT_ID):
         """
         Initialize the data logger.
         
@@ -24,28 +35,39 @@ class NMEA2000DataLogger:
             data_directory: Directory to store CSV files
             filename_format: strftime format for CSV filename
             flush_interval: How often to flush data to disk (seconds)
+            boat_id: Boat identifier for CSV data
         """
         self.data_directory = Path(data_directory)
         self.data_directory.mkdir(parents=True, exist_ok=True)
         self.filename_format = filename_format
         self.flush_interval = flush_interval
+        self.boat_id = boat_id
         
         self.csv_file = None
         self.csv_writer = None
-        self.fieldnames = None
         self.last_flush_time = time.time()
         self.message_count = 0
+        
+        # Data buffer for 1 Hz sampling
+        self.data_buffer = create_empty_row(boat_id)
+        self.buffer_lock = threading.Lock()
+        self.last_log_time = time.time()
+        
+        # 1 Hz logging thread
+        self.logging_active = False
+        self.logging_thread = None
         
         # Statistics tracking
         self.stats = {
             'max_speed': 0.0,
             'max_depth': 0.0,
             'total_distance': 0.0,
-            'messages_logged': 0
+            'messages_logged': 0,
+            'timing_errors': 0
         }
 
     def _open_new_csv_file(self) -> None:
-        """Open a new CSV file with timestamp-based filename"""
+        """Open a new CSV file with timestamp-based filename and write header"""
         if self.csv_file:
             self.csv_file.close()
         
@@ -53,98 +75,233 @@ class NMEA2000DataLogger:
         filepath = self.data_directory / filename
         
         self.csv_file = open(filepath, 'w', newline='', encoding='utf-8')
-        self.csv_writer = None  # Will be initialized on first write
+        self.csv_writer = csv.DictWriter(
+            self.csv_file,
+            fieldnames=COLUMN_NAMES,
+            extrasaction='ignore'
+        )
+        
+        # Write header and version line
+        self.csv_writer.writeheader()
+        self.csv_file.write(FORMAT_VERSION + '\n')
+        
         print(f"Opened new CSV file: {filepath}")
 
-    def _get_csv_row(self, message: Dict) -> Dict:
+    def _map_nmea_to_csv(self, message: Dict) -> None:
         """
-        Convert NMEA2000 message to CSV row format.
+        Map NMEA2000 message fields to CSV columns and update buffer.
         
         Args:
             message: Decoded NMEA2000 message
-            
-        Returns:
-            Dictionary with flattened message data
         """
-        row = {
-            'timestamp': datetime.now().isoformat(),
-            'pgn': message.get('PGN', ''),
-            'id': message.get('id', ''),
-            'description': message.get('description', ''),
-            'source': message.get('source', ''),
-            'destination': message.get('destination', ''),
-            'priority': message.get('priority', '')
-        }
-        
-        # Add field values
-        fields = message.get('fields', [])
-        for field in fields:
-            field_id = field.get('id', '')
-            value = field.get('value', '')
-            unit = field.get('unit_of_measurement', '')
+        with self.buffer_lock:
+            pgn = message.get('PGN')
+            fields = message.get('fields', [])
             
-            if field_id:
-                row[field_id] = value
-                if unit:
-                    row[f"{field_id}_unit"] = unit
+            # Map common NMEA2000 PGNs to CSV columns
+            # This is a simplified mapping - expand as needed for your specific PGNs
+            
+            # PGN 128259 - Speed
+            if pgn == 128259:
+                for field in fields:
+                    if field.get('id') == 'speed_water_referenced':
+                        value = field.get('value')
+                        if isinstance(value, (int, float)):
+                            self.data_buffer['BSP'] = value
+            
+            # PGN 128267 - Water Depth  
+            elif pgn == 128267:
+                for field in fields:
+                    if field.get('id') == 'depth':
+                        value = field.get('value')
+                        if isinstance(value, (int, float)):
+                            self.data_buffer['Depth'] = value
+            
+            # PGN 127250 - Vessel Heading
+            elif pgn == 127250:
+                for field in fields:
+                    if field.get('id') == 'heading':
+                        value = field.get('value')
+                        if isinstance(value, (int, float)):
+                            self.data_buffer['HDG'] = value
+            
+            # PGN 130306 - Wind Data
+            elif pgn == 130306:
+                for field in fields:
+                    field_id = field.get('id')
+                    value = field.get('value')
+                    if isinstance(value, (int, float)):
+                        if field_id == 'wind_speed':
+                            self.data_buffer['AWS'] = value
+                        elif field_id == 'wind_angle':
+                            self.data_buffer['AWA'] = value
+            
+            # PGN 129025 - Position Rapid Update
+            elif pgn == 129025:
+                for field in fields:
+                    field_id = field.get('id')
+                    value = field.get('value')
+                    if isinstance(value, (int, float)):
+                        if field_id == 'latitude':
+                            self.data_buffer['Lat'] = value
+                        elif field_id == 'longitude':
+                            self.data_buffer['Lon'] = value
+            
+            # PGN 129026 - COG & SOG Rapid Update
+            elif pgn == 129026:
+                for field in fields:
+                    field_id = field.get('id')
+                    value = field.get('value')
+                    if isinstance(value, (int, float)):
+                        if field_id == 'cog':
+                            self.data_buffer['COG'] = value
+                        elif field_id == 'sog':
+                            self.data_buffer['SOG'] = value
+            
+            # PGN 127257 - Attitude
+            elif pgn == 127257:
+                for field in fields:
+                    field_id = field.get('id')
+                    value = field.get('value')
+                    if isinstance(value, (int, float)):
+                        if field_id == 'roll':
+                            self.data_buffer['Heel'] = value
+                        elif field_id == 'pitch':
+                            self.data_buffer['Trim'] = value
+            
+            # PGN 130311 - Environmental Parameters
+            elif pgn == 130311:
+                # Collect temperature value and source separately, as they are
+                # typically provided as distinct fields in the NMEA2000 message.
+                temp_value = None
+                temp_source = None
+
+                for field in fields:
+                    field_id = field.get('id')
+                    value = field.get('value')
+
+                    # Temperature value
+                    if field_id == 'temperature' and isinstance(value, (int, float)):
+                        temp_value = value
+
+                    # Temperature source is usually a separate field
+                    elif field_id == 'temperature_source' and isinstance(value, str):
+                        temp_source = value
+
+                    # Atmospheric pressure mapping (unchanged behaviour)
+                    elif field_id == 'atmospheric_pressure' and isinstance(value, (int, float)):
+                        self.data_buffer['Baro'] = value
+
+                # Fallback: if source not found as its own field, try to read it
+                # as an attribute on the temperature field (for compatibility with
+                # decoders that attach it this way).
+                if temp_value is not None and temp_source is None:
+                    for field in fields:
+                        if field.get('id') == 'temperature':
+                            attr_source = field.get('temperature_source')
+                            if isinstance(attr_source, str) and attr_source:
+                                temp_source = attr_source
+                            break
+
+                # Map temperature value into appropriate CSV column based on source.
+                if temp_value is not None and temp_source:
+                    if temp_source == 'Sea Temperature':
+                        self.data_buffer['SeaTemp'] = temp_value
+                    elif temp_source == 'Outside Temperature':
+                        self.data_buffer['AirTemp'] = temp_value
+            
+            # PGN 127245 - Rudder
+            elif pgn == 127245:
+                for field in fields:
+                    if field.get('id') == 'position':
+                        value = field.get('value')
+                        if isinstance(value, (int, float)):
+                            self.data_buffer['Rudder'] = value
+            
+            # Add more PGN mappings as needed based on your specific NMEA2000 data
+    
+    def _logging_loop(self) -> None:
+        """Background thread that logs data at 1 Hz"""
+        start_time = time.time()
+        iteration = 0
         
-        return row
+        while self.logging_active:
+            try:
+                # Calculate target time to prevent drift accumulation
+                iteration += 1
+                target_time = start_time + iteration
+                
+                # Create row with current timestamp
+                with self.buffer_lock:
+                    now = datetime.now(timezone.utc)
+                    excel_time = datetime_to_excel_serial(now)
+                    
+                    row = self.data_buffer.copy()
+                    row['Utc'] = excel_time
+                
+                # Write row to CSV
+                if self.csv_file is None:
+                    self._open_new_csv_file()
+                
+                self.csv_writer.writerow(row)
+                self.stats['messages_logged'] += 1
+                
+                # Flush periodically
+                current_time = time.time()
+                if current_time - self.last_flush_time >= self.flush_interval:
+                    self.csv_file.flush()
+                    self.last_flush_time = current_time
+                
+                # Sleep until next 1Hz cycle
+                sleep_time = target_time - time.time()
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                else:
+                    # Timing error - we're running behind
+                    self.stats['timing_errors'] += 1
+                    if self.stats['timing_errors'] % 10 == 0:
+                        print(f"Warning: Timing errors detected ({self.stats['timing_errors']} total)")
+            
+            except Exception as e:
+                print(f"Error in logging loop: {e}")
+                time.sleep(1.0)  # Prevent tight loop on error
 
     def log_message(self, message: Dict) -> None:
         """
-        Log a single NMEA2000 message to CSV.
+        Process a single NMEA2000 message and update the data buffer.
         
         Args:
             message: Decoded NMEA2000 message
         """
-        if self.csv_file is None:
-            self._open_new_csv_file()
-        
-        row = self._get_csv_row(message)
-        
-        # Initialize CSV writer with fieldnames from first message
-        if self.csv_writer is None:
-            self.fieldnames = list(row.keys())
-            self.csv_writer = csv.DictWriter(
-                self.csv_file, 
-                fieldnames=self.fieldnames,
-                extrasaction='raise'
-            )
-            self.csv_writer.writeheader()
-        
-        # Write row; if new fields appear, start a new CSV file with expanded schema
-        try:
-            self.csv_writer.writerow(row)
-        except ValueError:
-            # Detect new fields that are not yet in the header
-            existing_fields = set(self.fieldnames)
-            new_fields = [key for key in row.keys() if key not in existing_fields]
-            if new_fields:
-                # New fields detected - start a new CSV file with expanded schema
-                self.fieldnames.extend(new_fields)
-                self._open_new_csv_file()
-                self.csv_writer = csv.DictWriter(
-                    self.csv_file,
-                    fieldnames=self.fieldnames,
-                    extrasaction='raise'
-                )
-                self.csv_writer.writeheader()
-                # Write the row with the updated writer
-                self.csv_writer.writerow(row)
-            else:
-                # No truly new fields; re-raise the error
-                raise
         self.message_count += 1
-        self.stats['messages_logged'] += 1
+        
+        # Map message to CSV columns
+        self._map_nmea_to_csv(message)
         
         # Update statistics
         self._update_statistics(message)
+    
+    def start_logging(self) -> None:
+        """Start the 1 Hz logging thread"""
+        if self.logging_active:
+            print("Logging already active")
+            return
         
-        # Flush periodically
-        current_time = time.time()
-        if current_time - self.last_flush_time >= self.flush_interval:
-            self.csv_file.flush()
-            self.last_flush_time = current_time
+        self.logging_active = True
+        self.logging_thread = threading.Thread(target=self._logging_loop, daemon=True)
+        self.logging_thread.start()
+        print("Started 1 Hz logging thread")
+    
+    def stop_logging(self) -> None:
+        """Stop the 1 Hz logging thread"""
+        if not self.logging_active:
+            return
+        
+        self.logging_active = False
+        if self.logging_thread:
+            self.logging_thread.join(timeout=2.0)
+            self.logging_thread = None
+        print("Stopped 1 Hz logging thread")
 
     def _update_statistics(self, message: Dict) -> None:
         """Update statistics from message data"""
@@ -172,7 +329,9 @@ class NMEA2000DataLogger:
         return self.stats.copy()
 
     def close(self) -> None:
-        """Close the CSV file"""
+        """Close the logger and stop logging thread"""
+        self.stop_logging()
+        
         if self.csv_file:
             self.csv_file.close()
             self.csv_file = None
@@ -201,6 +360,9 @@ class NMEA2000Reader:
         Args:
             callback: Function to call with each decoded message
         """
+        if USBClient is None:
+            raise ImportError("nmea2000 library not available. Install with: pip install nmea2000")
+        
         try:
             self.usb_client = USBClient(self.channel, self.bitrate)
             self.usb_client.set_receive_callback(callback)

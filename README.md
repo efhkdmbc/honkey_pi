@@ -88,18 +88,48 @@ python3 main.py --test-display
 
 ## Data Format
 
-CSV files are logged to `/home/pi/honkey_pi_data/` (configurable) with the following format:
+CSV files are logged to `/home/pi/honkey_pi_data/` (configurable) with a fixed format matching the reference specification:
 
 - **Filename**: `YYYYMMMDD_HHMMSS.csv` (e.g., `2021Nov14_120000.csv`)
-- **Columns**: timestamp, pgn, id, description, source, destination, priority, plus all decoded fields from each message
+- **Format**: 181 columns with standardized sailing/racing instrument data fields
+- **Logging Rate**: Exactly 1 Hz (one row per second)
+- **Timestamp Format**: Excel serial date number (Utc column)
+- **Version Line**: Format version identifier (!v11.10.18)
 
-Example row:
-```csv
-timestamp,pgn,id,description,source,destination,priority,speed_water_referenced,speed_water_referenced_unit
-2021-11-14T12:00:00,128259,speed,Speed,1,255,3,12.5,knots
+### Column Structure
+
+The CSV follows a fixed 181-column format with the following categories:
+- Navigation data: BSP, COG, SOG, Lat, Lon, HDG
+- Wind data: AWA, AWS, TWA, TWS, TWD  
+- Environmental: AirTemp, SeaTemp, Baro, Depth
+- Boat attitude: Heel, Trim, Rudder
+- GPS data: GpQual, PDOP, GpsNum, Altitude
+- Instrumentation: 32 User fields for custom sensors
+- Racing data: timing, mark positions, performance metrics
+- And many more specialized fields
+
+### Format Validation
+
+Validate your CSV files using the included validation tool:
+
+```bash
+python3 validate_csv.py path/to/your/file.csv --verbose
 ```
 
-This format is compatible with the honkey-analytics repository for further analysis.
+Options:
+- `--skip-timing`: Skip 1 Hz timing validation
+- `--timing-tolerance N`: Set acceptable timing tolerance in seconds (default: 0.2)
+- `--verbose`: Show detailed validation output
+
+### 1 Hz Logging Implementation
+
+The logger uses a dedicated thread that:
+1. Collects NMEA2000 messages as they arrive
+2. Updates a data buffer with the latest values
+3. Writes one CSV row every second at precisely 1 Hz
+4. Ensures consistent timing even with variable message arrival rates
+
+This format is fully compatible with the reference data format from professional sailing data loggers.
 
 ## Display Information
 
@@ -218,6 +248,21 @@ sudo chown -R pi:pi /home/pi/honkey_pi_data
 ```
 
 ## Development
+
+### Running Tests
+
+Run the comprehensive test suite:
+
+```bash
+cd /home/pi/honkey_pi
+python3 test_csv_format.py
+```
+
+This will test:
+- CSV format compliance (column count, names, order)
+- 1 Hz logging frequency accuracy
+- NMEA2000 to CSV field mapping
+- Timing error detection
 
 ### Running Manually (for testing)
 
