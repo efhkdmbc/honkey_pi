@@ -43,23 +43,26 @@ class InkyDisplay:
         Returns:
             Initialized Inky display object or None on failure
         """
+        # Import UC8159 driver at the top to avoid redundant imports
+        try:
+            from inky.inky_uc8159 import Inky as InkyUC8159
+        except ImportError:
+            InkyUC8159 = None
+        
         try:
             # First, try to detect the display type via EEPROM
             _eeprom = eeprom.read_eeprom()
             
             if _eeprom is not None:
                 display_variant = _eeprom.display_variant
-                detected_color = _eeprom.get_color()
                 
                 # For Inky v2/v3 displays (UC8159), manually instantiate with custom cs_pin
-                if display_variant == 14:
+                if InkyUC8159 and display_variant == 14:
                     # Impressions 5.7" (600x448)
-                    from inky.inky_uc8159 import Inky as InkyUC8159
                     print(f"Detected Inky Impressions 5.7\" (variant {display_variant})")
                     return InkyUC8159(resolution=(600, 448), cs_pin=self.cs_pin)
-                elif display_variant in (15, 16):
+                elif InkyUC8159 and display_variant in (15, 16):
                     # Impressions 7.3" (640x400) - variants 15 and 16
-                    from inky.inky_uc8159 import Inky as InkyUC8159
                     print(f"Detected Inky Impressions 7.3\" (variant {display_variant})")
                     return InkyUC8159(resolution=(640, 400), cs_pin=self.cs_pin)
                 else:
