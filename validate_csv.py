@@ -35,9 +35,9 @@ def main():
         action="store_true",
         help="Verbose output"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Check file exists
     csv_path = Path(args.csv_file)
     if not csv_path.exists():

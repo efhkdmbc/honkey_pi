@@ -158,6 +158,7 @@ def validate_1hz_timing(csv_file_path: str, tolerance: float = 0.2) -> tuple[boo
                         ts = float(parts[1])
                         timestamps.append(ts)
                     except ValueError:
+                        # Ignore non-numeric timestamp values; treat them as missing data
                         pass
             
             if len(timestamps) < 2:

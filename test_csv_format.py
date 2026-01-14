@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from csv_format import (
-    COLUMN_NAMES, FORMAT_VERSION, DEFAULT_BOAT_ID,
+    COLUMN_NAMES, DEFAULT_BOAT_ID,
     create_empty_row, datetime_to_excel_serial, excel_serial_to_datetime,
     validate_csv_format, validate_1hz_timing
 )
@@ -223,7 +223,9 @@ class TestNMEA2000Logger(unittest.TestCase):
                 'fields': [{'id': 'heading', 'value': 45.0}]
             })
             
-            # Wait for at least one more logging cycle to capture the values
+            # Wait for at least one more logging cycle to capture the values.
+            # 1.5 seconds ensures at least one full 1 Hz logging interval completes
+            # after the messages are sent, with some extra margin.
             time.sleep(1.5)
             
             # Manually flush to ensure data is written
@@ -240,7 +242,7 @@ class TestNMEA2000Logger(unittest.TestCase):
                 # Skip header line
                 header = f.readline().strip()
                 # Skip version line
-                version = f.readline().strip()
+                _ = f.readline().strip()
                 
                 # Read all remaining lines
                 data_lines = f.readlines()
@@ -250,7 +252,7 @@ class TestNMEA2000Logger(unittest.TestCase):
                 reader = csv.DictReader([header] + data_lines)
                 
                 # Skip first row (may be empty/before messages)
-                first_row = next(reader)
+                next(reader)
                 
                 # Read second data row (should have our values)
                 row = next(reader)

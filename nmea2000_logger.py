@@ -9,7 +9,7 @@ import time
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict
 
 try:
     from nmea2000.usb_client import USBClient
@@ -171,19 +171,44 @@ class NMEA2000DataLogger:
             
             # PGN 130311 - Environmental Parameters
             elif pgn == 130311:
+                # Collect temperature value and source separately, as they are
+                # typically provided as distinct fields in the NMEA2000 message.
+                temp_value = None
+                temp_source = None
+
                 for field in fields:
                     field_id = field.get('id')
                     value = field.get('value')
-                    if isinstance(value, (int, float)):
-                        if field_id == 'temperature':
-                            # Check if temperature_source field exists
-                            temp_source = field.get('temperature_source', '')
-                            if temp_source == 'Sea Temperature':
-                                self.data_buffer['SeaTemp'] = value
-                            elif temp_source == 'Outside Temperature':
-                                self.data_buffer['AirTemp'] = value
-                        elif field_id == 'atmospheric_pressure':
-                            self.data_buffer['Baro'] = value
+
+                    # Temperature value
+                    if field_id == 'temperature' and isinstance(value, (int, float)):
+                        temp_value = value
+
+                    # Temperature source is usually a separate field
+                    elif field_id == 'temperature_source' and isinstance(value, str):
+                        temp_source = value
+
+                    # Atmospheric pressure mapping (unchanged behaviour)
+                    elif field_id == 'atmospheric_pressure' and isinstance(value, (int, float)):
+                        self.data_buffer['Baro'] = value
+
+                # Fallback: if source not found as its own field, try to read it
+                # as an attribute on the temperature field (for compatibility with
+                # decoders that attach it this way).
+                if temp_value is not None and temp_source is None:
+                    for field in fields:
+                        if field.get('id') == 'temperature':
+                            attr_source = field.get('temperature_source')
+                            if isinstance(attr_source, str) and attr_source:
+                                temp_source = attr_source
+                            break
+
+                # Map temperature value into appropriate CSV column based on source.
+                if temp_value is not None and temp_source:
+                    if temp_source == 'Sea Temperature':
+                        self.data_buffer['SeaTemp'] = temp_value
+                    elif temp_source == 'Outside Temperature':
+                        self.data_buffer['AirTemp'] = temp_value
             
             # PGN 127245 - Rudder
             elif pgn == 127245:
