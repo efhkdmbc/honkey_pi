@@ -146,6 +146,25 @@ def test_display():
     print("  Check /tmp/inky_display_simulation.png for output")
 
 
+def test_bootup_screen():
+    """Test the bootup screen functionality"""
+    print("Testing Bootup Screen...")
+    
+    display = InkyDisplay(color="red")
+    
+    # Test with actual bootup screen image
+    result = display.show_bootup_screen("bootup screen.JPG")
+    
+    if result:
+        print("\n✓ Bootup screen test complete!")
+        print("  Check /tmp/inky_bootup_simulation.png for output")
+    else:
+        print("\n✗ Bootup screen test failed - image may not be found")
+        print("  This is expected if running outside the repository directory")
+    
+    return result
+
+
 def main():
     """Run all tests"""
     print("=" * 60)
@@ -157,6 +176,8 @@ def main():
         test_logger()
         print()
         test_display()
+        print()
+        test_bootup_screen()
         print()
         print("=" * 60)
         print("All tests passed!")

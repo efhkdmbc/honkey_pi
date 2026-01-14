@@ -18,6 +18,7 @@ display:
   color: "red"  # Options: red, yellow, black
   update_interval: 30  # Update display every N seconds
   rotation: 0  # Screen rotation (0, 90, 180, 270)
+  bootup_screen_duration: 30  # Display bootup screen for N seconds
 
 # Metrics Configuration
 metrics:
