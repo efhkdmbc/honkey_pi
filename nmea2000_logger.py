@@ -6,6 +6,7 @@ with 1 Hz sampling rate and fixed column format.
 
 import csv
 import errno
+import getpass
 import os
 import time
 import threading
@@ -48,7 +49,10 @@ class NMEA2000DataLogger:
         except OSError as e:
             # Catch permission-related errors
             if e.errno in (errno.EACCES, errno.EPERM):
-                current_user = os.environ.get('USER', 'current user')
+                try:
+                    current_user = getpass.getuser()
+                except Exception:
+                    current_user = 'current user'
                 error_msg = (
                     f"\n{'='*70}\n"
                     f"ERROR: Cannot create data directory: {self.data_directory}\n"
