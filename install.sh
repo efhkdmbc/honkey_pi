@@ -14,15 +14,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Detect the user who invoked sudo
-if [ -n "$SUDO_USER" ]; then
-    REAL_USER="$SUDO_USER"
-else
-    # Fallback to pi if not run with sudo
-    REAL_USER="pi"
-fi
-echo "Installing for user: $REAL_USER"
-
 # Install system dependencies
 echo "Installing system dependencies..."
 apt-get update
@@ -33,8 +24,6 @@ apt-get install -y python3-pip python3-dev python3-venv git can-utils
 # when the device is connected. No Raspberry Pi-specific configuration needed.
 
 # Configure CAN network interface
-# Create directory if it doesn't exist (not present by default on newer Raspberry Pi OS)
-mkdir -p /etc/network/interfaces.d
 cat > /etc/network/interfaces.d/can0 <<EOF
 auto can0
 iface can0 inet manual
@@ -44,7 +33,7 @@ iface can0 inet manual
 EOF
 
 # Create installation directory
-INSTALL_DIR="/home/$REAL_USER/honkey_pi"
+INSTALL_DIR="/home/pi/honkey_pi"
 echo "Creating installation directory: $INSTALL_DIR"
 mkdir -p $INSTALL_DIR
 
@@ -57,24 +46,21 @@ cp config.yaml $INSTALL_DIR/
 cp requirements.txt $INSTALL_DIR/
 
 # Set ownership
-chown -R $REAL_USER:$REAL_USER $INSTALL_DIR
+chown -R pi:pi $INSTALL_DIR
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
-su - $REAL_USER -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
+su - pi -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
 
 # Install systemd service
 echo "Installing systemd service..."
 cp honkey_pi.service /etc/systemd/system/
-# Update service file to use the correct user and paths
-sed -i "s|User=pi|User=$REAL_USER|g" /etc/systemd/system/honkey_pi.service
-sed -i "s|/home/pi/|/home/$REAL_USER/|g" /etc/systemd/system/honkey_pi.service
 systemctl daemon-reload
 
 # Create data directory
-DATA_DIR="/home/$REAL_USER/honkey_pi_data"
+DATA_DIR="/home/pi/honkey_pi_data"
 mkdir -p $DATA_DIR
-chown $REAL_USER:$REAL_USER $DATA_DIR
+chown pi:pi $DATA_DIR
 
 echo "========================================="
 echo "Installation complete!"
