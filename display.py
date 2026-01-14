@@ -240,8 +240,20 @@ class InkyDisplay:
             offset_y = (self.height - img.height) // 2
             display_img.paste(img, (offset_x, offset_y))
             
-            # Convert to palette mode for Inky display
-            display_img = display_img.convert("P", palette=Image.ADAPTIVE)
+            # Convert to palette mode for Inky display using a fixed limited palette
+            # Define a simple 3-color palette: white, black, and an accent (e.g., red)
+            inky_palette = [
+                255, 255, 255,  # white
+                0, 0, 0,        # black
+                255, 0, 0,      # accent (red)
+            ]
+            # Pad the palette to 256 colors (Pillow requires 768 values for mode "P")
+            inky_palette += [0, 0, 0] * (256 - len(inky_palette) // 3)
+            
+            # Create a palette image and quantize the boot image to this palette
+            palette_img = Image.new("P", (1, 1))
+            palette_img.putpalette(inky_palette)
+            display_img = display_img.quantize(palette=palette_img)
             
             # Display on Inky or save simulation
             if self.display and INKY_AVAILABLE:
