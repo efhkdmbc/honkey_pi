@@ -5,6 +5,7 @@ with 1 Hz sampling rate and fixed column format.
 """
 
 import csv
+import os
 import time
 import threading
 from datetime import datetime, timezone
@@ -46,7 +47,6 @@ class NMEA2000DataLogger:
         except OSError as e:
             # Catch permission-related errors (errno 13 = EACCES, errno 1 = EPERM)
             if e.errno in (13, 1):
-                import os
                 current_user = os.environ.get('USER', 'current user')
                 error_msg = (
                     f"\n{'='*70}\n"
