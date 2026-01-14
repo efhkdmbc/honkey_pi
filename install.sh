@@ -14,6 +14,19 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Detect the user who invoked sudo (or fall back to current user)
+if [ -n "$SUDO_USER" ]; then
+    INSTALL_USER="$SUDO_USER"
+elif [ -n "$USER" ] && [ "$USER" != "root" ]; then
+    INSTALL_USER="$USER"
+else
+    # Default to 'pi' if we can't determine the user
+    INSTALL_USER="pi"
+    echo "Warning: Could not detect invoking user, defaulting to 'pi'"
+fi
+
+echo "Installing for user: $INSTALL_USER"
+
 # Install system dependencies
 echo "Installing system dependencies..."
 apt-get update
@@ -22,6 +35,10 @@ apt-get install -y python3-pip python3-dev python3-venv git can-utils
 # Note: USB-CAN-A is a USB device and does not require device tree overlays.
 # The CAN interface will be created automatically by the USB kernel driver
 # when the device is connected. No Raspberry Pi-specific configuration needed.
+
+# Ensure network interfaces directory exists
+echo "Ensuring /etc/network/interfaces.d directory exists..."
+mkdir -p /etc/network/interfaces.d
 
 # Configure CAN network interface
 cat > /etc/network/interfaces.d/can0 <<EOF
@@ -33,34 +50,37 @@ iface can0 inet manual
 EOF
 
 # Create installation directory
-INSTALL_DIR="/home/pi/honkey_pi"
+INSTALL_DIR="/home/$INSTALL_USER/honkey_pi"
 echo "Creating installation directory: $INSTALL_DIR"
-mkdir -p $INSTALL_DIR
+mkdir -p "$INSTALL_DIR"
 
 # Copy files
 echo "Copying application files..."
-cp main.py $INSTALL_DIR/
-cp nmea2000_logger.py $INSTALL_DIR/
-cp display.py $INSTALL_DIR/
-cp config.yaml $INSTALL_DIR/
-cp requirements.txt $INSTALL_DIR/
+cp main.py "$INSTALL_DIR"/
+cp nmea2000_logger.py "$INSTALL_DIR"/
+cp display.py "$INSTALL_DIR"/
+cp config.yaml "$INSTALL_DIR"/
+cp requirements.txt "$INSTALL_DIR"/
 
 # Set ownership
-chown -R pi:pi $INSTALL_DIR
+chown -R "$INSTALL_USER":"$INSTALL_USER" "$INSTALL_DIR"
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
-su - pi -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
+su - "$INSTALL_USER" -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
 
 # Install systemd service
 echo "Installing systemd service..."
-cp honkey_pi.service /etc/systemd/system/
+# Update service file with the correct user and paths
+sed -e "s|User=pi|User=$INSTALL_USER|g" \
+    -e "s|/home/pi/|/home/$INSTALL_USER/|g" \
+    honkey_pi.service > /etc/systemd/system/honkey_pi.service
 systemctl daemon-reload
 
 # Create data directory
-DATA_DIR="/home/pi/honkey_pi_data"
-mkdir -p $DATA_DIR
-chown pi:pi $DATA_DIR
+DATA_DIR="/home/$INSTALL_USER/honkey_pi_data"
+mkdir -p "$DATA_DIR"
+chown "$INSTALL_USER":"$INSTALL_USER" "$DATA_DIR"
 
 echo "========================================="
 echo "Installation complete!"
