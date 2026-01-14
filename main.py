@@ -135,7 +135,7 @@ class HonkeyPi:
         print("Starting Honkey Pi NMEA2000 Reader...")
         
         # Show bootup screen
-        bootup_duration = self.config.get('display', {}).get('bootup_screen_duration', 30)
+        bootup_duration = self.config['display']['bootup_screen_duration']
         print(f"Displaying bootup screen for {bootup_duration} seconds...")
         if self.display.show_bootup_screen():
             time.sleep(bootup_duration)
