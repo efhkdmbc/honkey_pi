@@ -70,21 +70,12 @@ class TestDisplayCSPin(unittest.TestCase):
 
     def test_default_config_has_cs_pin(self):
         """Test that default configuration includes cs_pin"""
-        # Create a temporary config to test default config loading
-        import tempfile
-        import os
+        # Access the static method directly
+        default_config = HonkeyPi.get_default_config()
         
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Test with non-existent config to trigger default config
-            temp_config_path = os.path.join(tmpdir, 'nonexistent_config.yaml')
-            
-            # Mock the config loading to access default config
-            app = HonkeyPi.__new__(HonkeyPi)
-            default_config = app._get_default_config()
-            
-            self.assertIn('display', default_config, "Default config should have display section")
-            self.assertIn('cs_pin', default_config['display'], "Default display config should have cs_pin")
-            self.assertEqual(default_config['display']['cs_pin'], 7, "Default cs_pin should be 7")
+        self.assertIn('display', default_config, "Default config should have display section")
+        self.assertIn('cs_pin', default_config['display'], "Default display config should have cs_pin")
+        self.assertEqual(default_config['display']['cs_pin'], 7, "Default cs_pin should be 7")
 
     def test_display_dimensions_still_work(self):
         """Test that display dimensions are still properly detected"""

@@ -43,11 +43,18 @@ class InkyDisplay:
         Returns:
             Initialized Inky display object or None on failure
         """
-        # Import UC8159 driver at the top to avoid redundant imports
+        # Local import of UC8159 driver to avoid import errors if not available
         try:
             from inky.inky_uc8159 import Inky as InkyUC8159
         except ImportError:
             InkyUC8159 = None
+        
+        # Display variant to resolution mapping for UC8159 displays
+        UC8159_VARIANTS = {
+            14: (600, 448),  # Impressions 5.7"
+            15: (640, 400),  # Impressions 7.3"
+            16: (640, 400),  # Impressions 7.3" (alternate)
+        }
         
         try:
             # First, try to detect the display type via EEPROM
@@ -57,14 +64,10 @@ class InkyDisplay:
                 display_variant = _eeprom.display_variant
                 
                 # For Inky v2/v3 displays (UC8159), manually instantiate with custom cs_pin
-                if InkyUC8159 and display_variant == 14:
-                    # Impressions 5.7" (600x448)
-                    print(f"Detected Inky Impressions 5.7\" (variant {display_variant})")
-                    return InkyUC8159(resolution=(600, 448), cs_pin=self.cs_pin)
-                elif InkyUC8159 and display_variant in (15, 16):
-                    # Impressions 7.3" (640x400) - variants 15 and 16
-                    print(f"Detected Inky Impressions 7.3\" (variant {display_variant})")
-                    return InkyUC8159(resolution=(640, 400), cs_pin=self.cs_pin)
+                if InkyUC8159 and display_variant in UC8159_VARIANTS:
+                    resolution = UC8159_VARIANTS[display_variant]
+                    print(f"Detected Inky UC8159 display (variant {display_variant}, resolution {resolution})")
+                    return InkyUC8159(resolution=resolution, cs_pin=self.cs_pin)
                 else:
                     # For other display types, use auto() which doesn't support cs_pin
                     # These older displays don't have the cs_pin conflict issue

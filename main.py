@@ -57,9 +57,10 @@ class HonkeyPi:
                 return yaml.safe_load(f)
         else:
             print(f"Warning: Config file {config_path} not found, using defaults")
-            return self._get_default_config()
+            return HonkeyPi.get_default_config()
     
-    def _get_default_config(self) -> dict:
+    @staticmethod
+    def get_default_config() -> dict:
         """Return default configuration"""
         return {
             'can': {
