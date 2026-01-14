@@ -106,11 +106,6 @@ else
     exit 1
 fi
 
-echo ""
-echo "========================================="
-echo "All tests passed! ✓"
-echo "========================================="
-
 # Test 6: Verify path comparison logic
 echo ""
 echo "Test 6: Path comparison for same directory detection"
