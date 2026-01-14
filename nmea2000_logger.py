@@ -36,9 +36,38 @@ class NMEA2000DataLogger:
             filename_format: strftime format for CSV filename
             flush_interval: How often to flush data to disk (seconds)
             boat_id: Boat identifier for CSV data
+        
+        Raises:
+            PermissionError: If the data directory cannot be created due to insufficient permissions
         """
         self.data_directory = Path(data_directory)
-        self.data_directory.mkdir(parents=True, exist_ok=True)
+        try:
+            self.data_directory.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            # Catch permission-related errors (errno 13 = EACCES, errno 1 = EPERM)
+            if e.errno in (13, 1):
+                import os
+                current_user = os.environ.get('USER', 'current user')
+                error_msg = (
+                    f"\n{'='*70}\n"
+                    f"ERROR: Cannot create data directory: {self.data_directory}\n"
+                    f"{'='*70}\n"
+                    f"Permission denied. The service does not have write access to create\n"
+                    f"or access the configured data directory.\n\n"
+                    f"Possible solutions:\n"
+                    f"  1. Change the data_directory in config.yaml to a writable location\n"
+                    f"     (e.g., /tmp/honkey_pi_data or a directory owned by the service user)\n"
+                    f"  2. Create the directory manually with proper permissions:\n"
+                    f"     sudo mkdir -p {self.data_directory}\n"
+                    f"     sudo chown {current_user} {self.data_directory}\n"
+                    f"  3. If running as a systemd service, ensure the service user has\n"
+                    f"     write permissions to the configured directory\n"
+                    f"{'='*70}\n"
+                )
+                raise PermissionError(error_msg) from e
+            else:
+                # Re-raise other OSErrors
+                raise
         self.filename_format = filename_format
         self.flush_interval = flush_interval
         self.boat_id = boat_id
