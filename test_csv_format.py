@@ -204,7 +204,7 @@ class TestNMEA2000Logger(unittest.TestCase):
             # Start logging first
             logger.start_logging()
             
-            # Wait a moment for first (empty) row to be logged
+            # Wait 0.2 s (~20% of the 1 s logging interval) so the first empty row is logged
             time.sleep(0.2)
             
             # Now send messages with known values
