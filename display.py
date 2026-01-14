@@ -25,8 +25,8 @@ try:
 except ImportError:
     pass  # Display will be simulated if hardware not available
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Get module-specific logger
+logger = logging.getLogger(__name__)
 
 
 class InkyDisplay:
@@ -204,7 +204,7 @@ class InkyDisplay:
         """
         if Image is None:
             error_msg = "PIL not available, cannot display bootup screen"
-            logging.error(error_msg)
+            logger.error(error_msg)
             print(error_msg)
             return False
             
@@ -218,12 +218,12 @@ class InkyDisplay:
             # Check if image exists
             if not img_file.exists():
                 error_msg = f"Bootup image not found: {img_file}"
-                logging.error(error_msg)
+                logger.error(error_msg)
                 print(error_msg)
                 return False
             
             # Load and process image
-            logging.info(f"Loading bootup screen from: {img_file}")
+            logger.info(f"Loading bootup screen from: {img_file}")
             img = Image.open(img_file)
             
             # Convert to RGB if necessary
@@ -248,29 +248,24 @@ class InkyDisplay:
                 try:
                     self.display.set_image(display_img)
                     self.display.show()
-                    logging.info("Bootup screen displayed successfully")
+                    logger.info("Bootup screen displayed successfully")
                     print("Bootup screen displayed successfully")
                     return True
                 except Exception as e:
                     error_msg = f"Error displaying bootup screen on hardware: {e}"
-                    logging.error(error_msg)
+                    logger.error(error_msg)
                     print(error_msg)
                     return False
             else:
                 # Save to file for simulation/debugging
                 simulation_path = Path("/tmp/inky_bootup_simulation.png")
                 display_img.save(simulation_path)
-                logging.info(f"Bootup screen simulation saved to {simulation_path}")
+                logger.info(f"Bootup screen simulation saved to {simulation_path}")
                 print(f"Bootup screen simulation saved to {simulation_path}")
                 return True
                 
-        except FileNotFoundError as e:
-            error_msg = f"Bootup image file not found: {e}"
-            logging.error(error_msg)
-            print(error_msg)
-            return False
         except Exception as e:
             error_msg = f"Error loading bootup screen: {e}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             print(error_msg)
             return False

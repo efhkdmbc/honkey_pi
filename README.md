@@ -58,7 +58,7 @@ nano /home/pi/honkey_pi/config.yaml
 Key configuration options:
 - CAN interface settings (channel, bitrate)
 - Data logging directory and format
-- Display update interval and color
+- Display update interval, color, and bootup screen duration
 - Metrics to track (speed, depth, distance)
 
 ### 4. Start the Service
@@ -103,7 +103,17 @@ This format is compatible with the honkey-analytics repository for further analy
 
 ## Display Information
 
-The Inky pHAT display shows:
+### Bootup Screen
+
+On device startup, the Inky pHAT display shows the bootup image (`bootup screen.JPG`) for 30 seconds before transitioning to the normal display. This provides visual feedback that the device has powered on successfully.
+
+- The bootup screen duration can be configured in `config.yaml` under `display.bootup_screen_duration`
+- If the bootup image cannot be loaded, an error is logged and the device continues to normal operation
+- The image is automatically resized to fit the display dimensions (212x104 pixels)
+
+### Normal Operation Display
+
+After the bootup screen, the Inky pHAT display shows:
 - **Top Speed**: Maximum boat speed recorded (in knots)
 - **Messages**: Total number of NMEA 2000 messages logged
 - **Data**: Size of data directory (CSV files)
