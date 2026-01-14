@@ -108,30 +108,52 @@ fi
 
 # Test 6: Verify path comparison logic
 echo ""
-echo "Test 6: Path comparison for same directory detection"
+echo "Test 6: Path comparison for same directory detection (with canonical paths)"
 echo "  Case 1: Same directory (should skip copy)"
-SCRIPT_DIR="/home/testuser/honkey_pi"
-INSTALL_DIR="/home/testuser/honkey_pi"
-echo "    SCRIPT_DIR=$SCRIPT_DIR"
-echo "    INSTALL_DIR=$INSTALL_DIR"
-if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+
+# Create temporary test directories
+TEST_DIR1="/tmp/test_canonicalize_$$"
+mkdir -p "$TEST_DIR1"
+
+SCRIPT_DIR="$TEST_DIR1"
+INSTALL_DIR="$TEST_DIR1"
+
+# Get canonical paths as install.sh does
+SCRIPT_DIR_CANONICAL="$(cd "$SCRIPT_DIR" && pwd -P 2>/dev/null || pwd)"
+INSTALL_DIR_CANONICAL="$(cd "$INSTALL_DIR" && pwd -P 2>/dev/null || pwd)"
+
+echo "    SCRIPT_DIR_CANONICAL=$SCRIPT_DIR_CANONICAL"
+echo "    INSTALL_DIR_CANONICAL=$INSTALL_DIR_CANONICAL"
+if [ "$SCRIPT_DIR_CANONICAL" != "$INSTALL_DIR_CANONICAL" ]; then
     echo "    ✗ FAIL: Directories are same, should NOT copy"
+    rm -rf "$TEST_DIR1"
     exit 1
 else
     echo "    ✓ PASS: Correctly detects same directory (will skip copy)"
 fi
 
 echo "  Case 2: Different directories (should copy)"
-SCRIPT_DIR="/home/testuser/project"
-INSTALL_DIR="/home/testuser/honkey_pi"
-echo "    SCRIPT_DIR=$SCRIPT_DIR"
-echo "    INSTALL_DIR=$INSTALL_DIR"
-if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+TEST_DIR2="/tmp/test_different_$$"
+mkdir -p "$TEST_DIR2"
+
+SCRIPT_DIR="$TEST_DIR1"
+INSTALL_DIR="$TEST_DIR2"
+
+SCRIPT_DIR_CANONICAL="$(cd "$SCRIPT_DIR" && pwd -P 2>/dev/null || pwd)"
+INSTALL_DIR_CANONICAL="$(cd "$INSTALL_DIR" && pwd -P 2>/dev/null || pwd)"
+
+echo "    SCRIPT_DIR_CANONICAL=$SCRIPT_DIR_CANONICAL"
+echo "    INSTALL_DIR_CANONICAL=$INSTALL_DIR_CANONICAL"
+if [ "$SCRIPT_DIR_CANONICAL" != "$INSTALL_DIR_CANONICAL" ]; then
     echo "    ✓ PASS: Correctly detects different directories (will copy)"
 else
     echo "    ✗ FAIL: Directories are different, should copy"
+    rm -rf "$TEST_DIR1" "$TEST_DIR2"
     exit 1
 fi
+
+# Cleanup
+rm -rf "$TEST_DIR1" "$TEST_DIR2"
 
 echo ""
 echo "========================================="

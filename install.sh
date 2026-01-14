@@ -54,11 +54,15 @@ INSTALL_DIR="/home/$INSTALL_USER/honkey_pi"
 echo "Creating installation directory: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
-# Get the absolute path of the current directory
+# Get the absolute path of the current directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Get canonical absolute paths to handle symlinks and relative paths correctly
+SCRIPT_DIR_CANONICAL="$(cd "$SCRIPT_DIR" && pwd -P 2>/dev/null || pwd)"
+INSTALL_DIR_CANONICAL="$(cd "$INSTALL_DIR" && pwd -P 2>/dev/null || pwd)"
+
 # Copy files only if we're not already in the installation directory
-if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+if [ "$SCRIPT_DIR_CANONICAL" != "$INSTALL_DIR_CANONICAL" ]; then
     echo "Copying application files from $SCRIPT_DIR to $INSTALL_DIR..."
     cp "$SCRIPT_DIR/main.py" "$INSTALL_DIR"/
     cp "$SCRIPT_DIR/nmea2000_logger.py" "$INSTALL_DIR"/
