@@ -19,6 +19,8 @@ display:
   update_interval: 30  # Update display every N seconds
   rotation: 0  # Screen rotation (0, 90, 180, 270)
   bootup_screen_duration: 30  # Display bootup screen for N seconds
+  cs_pin: 7  # SPI Chip Select GPIO pin (default: 7 to avoid GPIO8 conflict with spi0 CS0)
+             # Use 7 (CE1) instead of 8 (CE0) to prevent resource conflicts with USB-CAN-A
 
 # Metrics Configuration
 metrics:

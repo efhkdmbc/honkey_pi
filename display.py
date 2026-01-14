@@ -21,6 +21,7 @@ INKY_AVAILABLE = False
 
 try:
     from inky.auto import auto
+    from inky import eeprom
     INKY_AVAILABLE = True
 except ImportError:
     pass  # Display will be simulated if hardware not available
@@ -32,16 +33,72 @@ logger = logging.getLogger(__name__)
 class InkyDisplay:
     """Manages the Inky pHAT e-ink display"""
 
-    def __init__(self, color: str = "red", rotation: int = 0):
+    def _initialize_display(self):
+        """
+        Initialize the Inky display with auto-detection and custom cs_pin support.
+        
+        For Inky v2/v3 displays (UC8159 driver), this method allows using a custom
+        chip select pin to avoid GPIO8/CE0 conflicts with other SPI devices.
+        
+        Returns:
+            Initialized Inky display object or None on failure
+        """
+        # Local import of UC8159 driver to avoid import errors if not available
+        try:
+            from inky.inky_uc8159 import Inky as InkyUC8159
+        except ImportError:
+            InkyUC8159 = None
+        
+        # Display variant to resolution mapping for UC8159 displays
+        UC8159_VARIANTS = {
+            14: (600, 448),  # Impressions 5.7"
+            15: (640, 400),  # Impressions 7.3"
+            16: (640, 400),  # Impressions 7.3" (alternate)
+        }
+        
+        try:
+            # First, try to detect the display type via EEPROM
+            _eeprom = eeprom.read_eeprom()
+            
+            if _eeprom is not None:
+                display_variant = _eeprom.display_variant
+                
+                # For Inky v2/v3 displays (UC8159), manually instantiate with custom cs_pin
+                if InkyUC8159 and display_variant in UC8159_VARIANTS:
+                    resolution = UC8159_VARIANTS[display_variant]
+                    print(f"Detected Inky UC8159 display (variant {display_variant}, resolution {resolution})")
+                    return InkyUC8159(resolution=resolution, cs_pin=self.cs_pin)
+                else:
+                    # For other display types, use auto() which doesn't support cs_pin
+                    # These older displays don't have the cs_pin conflict issue
+                    print(f"Detected Inky display (variant {display_variant}), using auto-detection")
+                    return auto(ask_user=False)
+            else:
+                # No EEPROM detected, try auto() as fallback
+                print("No EEPROM detected, attempting auto-detection")
+                return auto(ask_user=False)
+                
+        except Exception as e:
+            print(f"Error during display initialization: {e}")
+            # Try auto() as last resort
+            try:
+                return auto(ask_user=False)
+            except Exception as e2:
+                print(f"Auto-detection also failed: {e2}")
+                return None
+
+    def __init__(self, color: str = "red", rotation: int = 0, cs_pin: int = 7):
         """
         Initialize the Inky pHAT display.
         
         Args:
             color: Display color variant (red, yellow, black)
             rotation: Display rotation (0, 90, 180, 270)
+            cs_pin: SPI Chip Select GPIO pin (default: 7 for CE1 to avoid GPIO8/CE0 conflict)
         """
         self.color = color
         self.rotation = rotation
+        self.cs_pin = cs_pin
         self.display = None
         
         # Default dimensions (fallback for Inky pHAT 212x104)
@@ -50,20 +107,22 @@ class InkyDisplay:
         
         if INKY_AVAILABLE:
             try:
-                self.display = auto(ask_user=False)
-                self.display.set_border(self.display.WHITE)
-                if self.rotation:
-                    self.display.set_rotation(self.rotation)
-                # Use auto-detected resolution instead of hard-coded values
-                detected_width, detected_height = self.display.resolution
-                # Validate that resolution values are positive integers
-                if detected_width > 0 and detected_height > 0:
-                    self.width = detected_width
-                    self.height = detected_height
-                    print(f"Initialized Inky pHAT display: {self.display.resolution} ({self.display.colour})")
-                else:
-                    print(f"Warning: Invalid display resolution detected: {self.display.resolution}")
-                    print(f"Using default dimensions: {self.width}x{self.height}")
+                # Try to auto-detect the display using EEPROM
+                self.display = self._initialize_display()
+                if self.display:
+                    self.display.set_border(self.display.WHITE)
+                    if self.rotation:
+                        self.display.set_rotation(self.rotation)
+                    # Use auto-detected resolution instead of hard-coded values
+                    detected_width, detected_height = self.display.resolution
+                    # Validate that resolution values are positive integers
+                    if detected_width > 0 and detected_height > 0:
+                        self.width = detected_width
+                        self.height = detected_height
+                        print(f"Initialized Inky display: {self.display.resolution} ({self.display.colour})")
+                    else:
+                        print(f"Warning: Invalid display resolution detected: {self.display.resolution}")
+                        print(f"Using default dimensions: {self.width}x{self.height}")
             except Exception as e:
                 print(f"Error initializing display: {e}")
                 print(f"Falling back to simulated display with default dimensions: {self.width}x{self.height}")

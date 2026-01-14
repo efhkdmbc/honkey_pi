@@ -16,9 +16,11 @@ Honkey Pi is a complete software stack for the Raspberry Pi Zero that:
 
 - **Raspberry Pi Zero** (or Zero W/WH)
 - **Waveshare USB-CAN-A** interface for NMEA 2000 connectivity
-- **Inky pHAT** e-ink display (red, yellow, or black variant)
+- **Inky pHAT** e-ink display (red, yellow, or black variant; **V2/V3 recommended** for best compatibility)
 - MicroSD card (16GB+ recommended for data storage)
 - Power supply for Raspberry Pi
+
+**Note:** Inky V2/V3 displays are recommended as they support configurable SPI chip select pins, avoiding GPIO8 resource conflicts with the USB-CAN-A interface.
 
 ## Software Requirements
 
@@ -60,7 +62,8 @@ nano /home/pi/honkey_pi/config.yaml
 Key configuration options:
 - CAN interface settings (channel, bitrate)
 - Data logging directory and format
-- Display update interval, color, and bootup screen duration
+- Display update interval, color, rotation, and bootup screen duration
+- SPI chip select pin (`cs_pin`) - set to GPIO7 (CE1) by default to avoid GPIO8 (CE0) conflicts with USB-CAN-A
 - Metrics to track (speed, depth, distance)
 
 ### 4. Start the Service
@@ -223,6 +226,32 @@ sudo raspi-config
 cd /home/pi/honkey_pi
 python3 main.py --test-display
 ```
+
+### GPIO8 / SPI Chip Select Conflicts
+
+If you experience issues with the Inky display when using the Waveshare USB-CAN-A:
+
+**Problem:** GPIO8 (SPI CE0) resource conflict between the display and other SPI devices.
+
+**Solution:**
+
+1. Ensure your `config.yaml` uses GPIO7 (CE1) instead of GPIO8 (CE0):
+   ```yaml
+   display:
+     cs_pin: 7  # Use CE1 instead of CE0
+   ```
+
+2. This configuration is the default and should work out of the box with Inky V2/V3 displays.
+
+3. If you're using an older Inky V1 display that doesn't support custom chip select pins, consider upgrading to Inky V2/V3 for full compatibility.
+
+4. Verify the configuration is working:
+   ```bash
+   sudo journalctl -u honkey_pi -n 50 | grep "Initialized Inky"
+   # Should show "Initialized Inky display" with detected resolution
+   ```
+
+For detailed hardware setup and wiring information, see [HARDWARE_SETUP.md](HARDWARE_SETUP.md).
 
 ### No Data Being Logged
 
