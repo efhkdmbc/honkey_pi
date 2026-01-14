@@ -44,22 +44,26 @@ class InkyDisplay:
         self.rotation = rotation
         self.display = None
         
+        # Default dimensions (fallback for Inky pHAT 212x104)
+        self.width = 212
+        self.height = 104
+        
         if INKY_AVAILABLE:
             try:
                 self.display = auto(ask_user=False)
                 self.display.set_border(self.display.WHITE)
                 if self.rotation:
                     self.display.set_rotation(self.rotation)
-                print(f"Initialized Inky pHAT display: {self.display.resolution}")
+                # Use auto-detected resolution instead of hard-coded values
+                self.width, self.height = self.display.resolution
+                print(f"Initialized Inky pHAT display: {self.display.resolution} ({self.display.colour})")
             except Exception as e:
                 print(f"Error initializing display: {e}")
+                print(f"Falling back to simulated display with default dimensions: {self.width}x{self.height}")
                 self.display = None
         else:
             print("Warning: Inky library not available. Display will be simulated.")
-        
-        # Display dimensions (Inky pHAT is 212x104)
-        self.width = 212
-        self.height = 104
+            print(f"Using default dimensions: {self.width}x{self.height}")
 
     def _get_storage_info(self, data_directory: str) -> tuple:
         """
