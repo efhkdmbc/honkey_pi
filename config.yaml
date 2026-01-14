@@ -1,0 +1,27 @@
+# Configuration for Honkey Pi NMEA2000 Reader
+
+# CAN Interface Configuration
+can:
+  interface: "usb"  # USB-CAN-A interface type
+  bitrate: 250000   # NMEA2000 standard bitrate
+  channel: "can0"   # CAN channel name
+
+# Data Logging Configuration
+logging:
+  data_directory: "/home/pi/honkey_pi_data"
+  csv_filename_format: "%Y%b%d_%H%M%S.csv"  # e.g., 2021Nov14_120000.csv
+  flush_interval: 10  # Flush CSV data every N seconds
+
+# Display Configuration
+display:
+  type: "inky_phat"
+  color: "red"  # Options: red, yellow, black
+  update_interval: 30  # Update display every N seconds
+  rotation: 0  # Screen rotation (0, 90, 180, 270)
+
+# Metrics Configuration
+metrics:
+  track_top_speed: true
+  track_max_depth: true
+  track_total_distance: true
+  speed_unit: "knots"  # knots or kph or mph

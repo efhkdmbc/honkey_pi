@@ -1,0 +1,16 @@
+[Unit]
+Description=Honkey Pi NMEA2000 Data Logger
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/honkey_pi
+ExecStart=/usr/bin/python3 /home/pi/honkey_pi/main.py -c /home/pi/honkey_pi/config.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
