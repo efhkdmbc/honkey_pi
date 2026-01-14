@@ -201,9 +201,13 @@ class TestNMEA2000Logger(unittest.TestCase):
         )
         
         try:
+            # Start logging first
             logger.start_logging()
             
-            # Send messages with known values
+            # Wait a moment for first (empty) row to be logged
+            time.sleep(0.2)
+            
+            # Now send messages with known values
             logger.log_message({
                 'PGN': 128259,
                 'fields': [{'id': 'speed_water_referenced', 'value': 12.5}]
@@ -219,28 +223,48 @@ class TestNMEA2000Logger(unittest.TestCase):
                 'fields': [{'id': 'heading', 'value': 45.0}]
             })
             
-            # Wait for logging
+            # Wait for at least one more logging cycle to capture the values
             time.sleep(1.5)
+            
+            # Manually flush to ensure data is written
+            if logger.csv_file:
+                logger.csv_file.flush()
+            
+            # Find CSV file before closing
+            csv_files = list(self.test_dir.glob("test_mapping*.csv"))
+            self.assertEqual(len(csv_files), 1, "Should create exactly one CSV file")
+            csv_file = csv_files[0]
+            
+            # Read and check values before closing logger
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                # Skip header line
+                header = f.readline().strip()
+                # Skip version line
+                version = f.readline().strip()
+                
+                # Read all remaining lines
+                data_lines = f.readlines()
+                self.assertGreater(len(data_lines), 1, "Should have at least two data rows")
+                
+                # Create reader with header
+                reader = csv.DictReader([header] + data_lines)
+                
+                # Skip first row (may be empty/before messages)
+                first_row = next(reader)
+                
+                # Read second data row (should have our values)
+                row = next(reader)
+                
+                # Check mapped values (they should exist and not be empty strings)
+                self.assertNotEqual(row['BSP'], '', "BSP should have a value")
+                self.assertEqual(float(row['BSP']), 12.5, "BSP should be mapped from speed")
+                self.assertNotEqual(row['Depth'], '', "Depth should have a value")
+                self.assertEqual(float(row['Depth']), 20.3, "Depth should be mapped")
+                self.assertNotEqual(row['HDG'], '', "HDG should have a value")
+                self.assertEqual(float(row['HDG']), 45.0, "Heading should be mapped")
             
         finally:
             logger.close()
-        
-        # Read the CSV and check values
-        csv_files = list(self.test_dir.glob("test_mapping*.csv"))
-        self.assertEqual(len(csv_files), 1)
-        
-        with open(csv_files[0], 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            # Skip version line
-            next(f)
-            
-            # Read first data row
-            row = next(reader)
-            
-            # Check mapped values
-            self.assertEqual(float(row['BSP']), 12.5, "BSP should be mapped from speed")
-            self.assertEqual(float(row['Depth']), 20.3, "Depth should be mapped")
-            self.assertEqual(float(row['HDG']), 45.0, "Heading should be mapped")
     
     def test_timing_error_detection(self):
         """Test that timing errors are detected and reported"""

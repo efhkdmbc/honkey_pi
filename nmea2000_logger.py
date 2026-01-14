@@ -11,7 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from nmea2000.usb_client import USBClient
+try:
+    from nmea2000.usb_client import USBClient
+except ImportError:
+    # Allow module to load for testing without hardware
+    USBClient = None
+
 from csv_format import (
     COLUMN_NAMES, FORMAT_VERSION, DEFAULT_BOAT_ID,
     create_empty_row, datetime_to_excel_serial
@@ -328,6 +333,9 @@ class NMEA2000Reader:
         Args:
             callback: Function to call with each decoded message
         """
+        if USBClient is None:
+            raise ImportError("nmea2000 library not available. Install with: pip install nmea2000")
+        
         try:
             self.usb_client = USBClient(self.channel, self.bitrate)
             self.usb_client.set_receive_callback(callback)
