@@ -54,27 +54,35 @@ INSTALL_DIR="/home/$INSTALL_USER/honkey_pi"
 echo "Creating installation directory: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
-# Copy files
-echo "Copying application files..."
-cp main.py "$INSTALL_DIR"/
-cp nmea2000_logger.py "$INSTALL_DIR"/
-cp display.py "$INSTALL_DIR"/
-cp config.yaml "$INSTALL_DIR"/
-cp requirements.txt "$INSTALL_DIR"/
+# Get the absolute path of the current directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Copy files only if we're not already in the installation directory
+if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+    echo "Copying application files from $SCRIPT_DIR to $INSTALL_DIR..."
+    cp "$SCRIPT_DIR/main.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/nmea2000_logger.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/display.py" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/config.yaml" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR"/
+    cp "$SCRIPT_DIR/honkey_pi.service" "$INSTALL_DIR"/
+else
+    echo "Already in installation directory, skipping file copy..."
+fi
 
 # Set ownership
 chown -R "$INSTALL_USER":"$INSTALL_USER" "$INSTALL_DIR"
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
-su - "$INSTALL_USER" -c "cd $INSTALL_DIR && pip3 install -r requirements.txt"
+su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && pip3 install -r requirements.txt"
 
 # Install systemd service
 echo "Installing systemd service..."
 # Update service file with the correct user and paths
 sed -e "s|User=pi|User=$INSTALL_USER|g" \
     -e "s|/home/pi/|/home/$INSTALL_USER/|g" \
-    honkey_pi.service > /etc/systemd/system/honkey_pi.service
+    "$INSTALL_DIR/honkey_pi.service" > /etc/systemd/system/honkey_pi.service
 systemctl daemon-reload
 
 # Create data directory
