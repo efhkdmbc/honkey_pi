@@ -112,7 +112,7 @@ class NMEA2000DataLogger:
             )
             self.csv_writer.writeheader()
         
-        # Write row; if new fields appear, expand header dynamically
+        # Write row; if new fields appear, start a new CSV file with expanded schema
         try:
             self.csv_writer.writerow(row)
         except ValueError:
@@ -120,16 +120,16 @@ class NMEA2000DataLogger:
             existing_fields = set(self.fieldnames)
             new_fields = [key for key in row.keys() if key not in existing_fields]
             if new_fields:
-                # Extend fieldnames and recreate writer with updated columns
+                # New fields detected - start a new CSV file with expanded schema
                 self.fieldnames.extend(new_fields)
+                self._open_new_csv_file()
                 self.csv_writer = csv.DictWriter(
                     self.csv_file,
                     fieldnames=self.fieldnames,
                     extrasaction='raise'
                 )
-                # Write a new header row reflecting the expanded set of columns
                 self.csv_writer.writeheader()
-                # Retry writing the row with the updated writer
+                # Write the row with the updated writer
                 self.csv_writer.writerow(row)
             else:
                 # No truly new fields; re-raise the error
