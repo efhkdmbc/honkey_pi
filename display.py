@@ -3,19 +3,19 @@ Display module for Inky pHAT e-ink display
 Shows boat metrics and system information
 """
 
-import os
 import psutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
+
+INKY_AVAILABLE = False
 
 try:
     from inky.auto import auto
     from PIL import Image, ImageDraw, ImageFont
     INKY_AVAILABLE = True
 except ImportError:
-    INKY_AVAILABLE = False
-    print("Warning: Inky library not available. Display will be simulated.")
+    pass  # Display will be simulated if hardware not available
 
 
 class InkyDisplay:
@@ -37,10 +37,14 @@ class InkyDisplay:
             try:
                 self.display = auto(ask_user=False)
                 self.display.set_border(self.display.WHITE)
+                if self.rotation:
+                    self.display.set_rotation(self.rotation)
                 print(f"Initialized Inky pHAT display: {self.display.resolution}")
             except Exception as e:
                 print(f"Error initializing display: {e}")
                 self.display = None
+        else:
+            print("Warning: Inky library not available. Display will be simulated.")
         
         # Display dimensions (Inky pHAT is 212x104)
         self.width = 212
@@ -105,7 +109,7 @@ class InkyDisplay:
             font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
             font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
             font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
-        except:
+        except (OSError, IOError):
             font_large = ImageFont.load_default()
             font_medium = ImageFont.load_default()
             font_small = ImageFont.load_default()

@@ -23,90 +23,91 @@ def test_logger():
         flush_interval=1
     )
     
-    # Sample NMEA2000 messages
-    sample_messages = [
-        {
-            'PGN': 128259,
-            'id': 'speed',
-            'description': 'Speed',
-            'source': 1,
-            'destination': 255,
-            'priority': 3,
-            'fields': [
-                {
-                    'id': 'speed_water_referenced',
-                    'name': 'Speed Water Referenced',
-                    'value': 12.5,
-                    'unit_of_measurement': 'knots'
-                },
-                {
-                    'id': 'speed_ground_referenced',
-                    'name': 'Speed Ground Referenced',
-                    'value': 12.3,
-                    'unit_of_measurement': 'knots'
-                }
-            ]
-        },
-        {
-            'PGN': 128267,
-            'id': 'waterDepth',
-            'description': 'Water Depth',
-            'source': 2,
-            'destination': 255,
-            'priority': 5,
-            'fields': [
-                {
-                    'id': 'depth',
-                    'name': 'Depth',
-                    'value': 15.3,
-                    'unit_of_measurement': 'm'
-                },
-                {
-                    'id': 'offset',
-                    'name': 'Offset',
-                    'value': 0.0,
-                    'unit_of_measurement': 'm'
-                }
-            ]
-        },
-        {
-            'PGN': 127250,
-            'id': 'vesselHeading',
-            'description': 'Vessel Heading',
-            'source': 3,
-            'destination': 255,
-            'priority': 2,
-            'fields': [
-                {
-                    'id': 'heading',
-                    'name': 'Heading',
-                    'value': 45.5,
-                    'unit_of_measurement': 'deg'
-                },
-                {
-                    'id': 'deviation',
-                    'name': 'Deviation',
-                    'value': 0.0,
-                    'unit_of_measurement': 'deg'
-                }
-            ]
-        }
-    ]
-    
-    # Log sample messages
-    for msg in sample_messages:
-        logger.log_message(msg)
-        print(f"Logged message: PGN {msg['PGN']} - {msg['description']}")
-    
-    # Get statistics
-    stats = logger.get_statistics()
-    print(f"\nStatistics:")
-    print(f"  Max Speed: {stats['max_speed']:.2f} knots")
-    print(f"  Max Depth: {stats['max_depth']:.2f} m")
-    print(f"  Messages Logged: {stats['messages_logged']}")
-    
-    # Close logger
-    logger.close()
+    try:
+        # Sample NMEA2000 messages
+        sample_messages = [
+            {
+                'PGN': 128259,
+                'id': 'speed',
+                'description': 'Speed',
+                'source': 1,
+                'destination': 255,
+                'priority': 3,
+                'fields': [
+                    {
+                        'id': 'speed_water_referenced',
+                        'name': 'Speed Water Referenced',
+                        'value': 12.5,
+                        'unit_of_measurement': 'knots'
+                    },
+                    {
+                        'id': 'speed_ground_referenced',
+                        'name': 'Speed Ground Referenced',
+                        'value': 12.3,
+                        'unit_of_measurement': 'knots'
+                    }
+                ]
+            },
+            {
+                'PGN': 128267,
+                'id': 'waterDepth',
+                'description': 'Water Depth',
+                'source': 2,
+                'destination': 255,
+                'priority': 5,
+                'fields': [
+                    {
+                        'id': 'depth',
+                        'name': 'Depth',
+                        'value': 15.3,
+                        'unit_of_measurement': 'm'
+                    },
+                    {
+                        'id': 'offset',
+                        'name': 'Offset',
+                        'value': 0.0,
+                        'unit_of_measurement': 'm'
+                    }
+                ]
+            },
+            {
+                'PGN': 127250,
+                'id': 'vesselHeading',
+                'description': 'Vessel Heading',
+                'source': 3,
+                'destination': 255,
+                'priority': 2,
+                'fields': [
+                    {
+                        'id': 'heading',
+                        'name': 'Heading',
+                        'value': 45.5,
+                        'unit_of_measurement': 'deg'
+                    },
+                    {
+                        'id': 'deviation',
+                        'name': 'Deviation',
+                        'value': 0.0,
+                        'unit_of_measurement': 'deg'
+                    }
+                ]
+            }
+        ]
+        
+        # Log sample messages
+        for msg in sample_messages:
+            logger.log_message(msg)
+            print(f"Logged message: PGN {msg['PGN']} - {msg['description']}")
+        
+        # Get statistics
+        stats = logger.get_statistics()
+        print(f"\nStatistics:")
+        print(f"  Max Speed: {stats['max_speed']:.2f} knots")
+        print(f"  Max Depth: {stats['max_depth']:.2f} m")
+        print(f"  Messages Logged: {stats['messages_logged']}")
+    finally:
+        # Ensure logger is always closed, even if an error occurs
+        logger.close()
     
     # Check output file
     output_dir = Path("/tmp/honkey_pi_test")

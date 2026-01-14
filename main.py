@@ -103,6 +103,9 @@ class HonkeyPi:
                     'PGN': getattr(message, 'pgn', ''),
                     'id': getattr(message, 'id', ''),
                     'description': getattr(message, 'description', ''),
+                    'source': getattr(message, 'source', ''),
+                    'destination': getattr(message, 'destination', ''),
+                    'priority': getattr(message, 'priority', ''),
                     'fields': getattr(message, 'fields', [])
                 }
             
@@ -207,7 +210,6 @@ def main():
     def signal_handler(sig, frame):
         print("\nReceived shutdown signal")
         app.stop()
-        sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)

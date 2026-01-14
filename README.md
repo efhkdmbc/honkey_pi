@@ -90,7 +90,7 @@ python3 main.py --test-display
 
 CSV files are logged to `/home/pi/honkey_pi_data/` (configurable) with the following format:
 
-- **Filename**: `YYYYMmmDD_HHMMSS.csv` (e.g., `2021Nov14_120000.csv`)
+- **Filename**: `YYYYMMMDD_HHMMSS.csv` (e.g., `2021Nov14_120000.csv`)
 - **Columns**: timestamp, pgn, id, description, source, destination, priority, plus all decoded fields from each message
 
 Example row:

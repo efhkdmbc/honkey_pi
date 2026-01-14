@@ -19,12 +19,9 @@ echo "Installing system dependencies..."
 apt-get update
 apt-get install -y python3-pip python3-dev python3-venv git can-utils
 
-# Set up CAN interface
-echo "Setting up CAN interface..."
-if ! grep -q "dtoverlay=mcp2515" /boot/config.txt; then
-    echo "dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25" >> /boot/config.txt
-    echo "dtoverlay=spi-bcm2835-overlay" >> /boot/config.txt
-fi
+# Note: USB-CAN-A is a USB device and does not require device tree overlays.
+# The CAN interface will be created automatically by the USB kernel driver
+# when the device is connected. No Raspberry Pi-specific configuration needed.
 
 # Configure CAN network interface
 cat > /etc/network/interfaces.d/can0 <<EOF

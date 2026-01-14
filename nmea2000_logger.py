@@ -4,13 +4,11 @@ Reads NMEA 2000 data from USB-CAN-A and logs to CSV format
 """
 
 import csv
-import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
-from nmea2000.decoder import NMEA2000Decoder
 from nmea2000.usb_client import USBClient
 
 
@@ -54,7 +52,7 @@ class NMEA2000DataLogger:
         filename = datetime.now().strftime(self.filename_format)
         filepath = self.data_directory / filename
         
-        self.csv_file = open(filepath, 'w', newline='')
+        self.csv_file = open(filepath, 'w', newline='', encoding='utf-8')
         self.csv_writer = None  # Will be initialized on first write
         print(f"Opened new CSV file: {filepath}")
 
@@ -110,13 +108,32 @@ class NMEA2000DataLogger:
             self.csv_writer = csv.DictWriter(
                 self.csv_file, 
                 fieldnames=self.fieldnames,
-                extrasaction='ignore'
+                extrasaction='raise'
             )
             self.csv_writer.writeheader()
         
-        # Write row - DictWriter will handle extra fields via extrasaction='ignore'
-        # and will fill missing fields with empty strings
-        self.csv_writer.writerow(row)
+        # Write row; if new fields appear, expand header dynamically
+        try:
+            self.csv_writer.writerow(row)
+        except ValueError:
+            # Detect new fields that are not yet in the header
+            existing_fields = set(self.fieldnames)
+            new_fields = [key for key in row.keys() if key not in existing_fields]
+            if new_fields:
+                # Extend fieldnames and recreate writer with updated columns
+                self.fieldnames.extend(new_fields)
+                self.csv_writer = csv.DictWriter(
+                    self.csv_file,
+                    fieldnames=self.fieldnames,
+                    extrasaction='raise'
+                )
+                # Write a new header row reflecting the expanded set of columns
+                self.csv_writer.writeheader()
+                # Retry writing the row with the updated writer
+                self.csv_writer.writerow(row)
+            else:
+                # No truly new fields; re-raise the error
+                raise
         self.message_count += 1
         self.stats['messages_logged'] += 1
         
@@ -175,7 +192,6 @@ class NMEA2000Reader:
         """
         self.channel = channel
         self.bitrate = bitrate
-        self.decoder = NMEA2000Decoder()
         self.usb_client = None
 
     def start(self, callback) -> None:
