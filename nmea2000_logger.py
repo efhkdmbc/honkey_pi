@@ -114,12 +114,8 @@ class NMEA2000DataLogger:
             )
             self.csv_writer.writeheader()
         
-        # Write row, adding missing fields if needed
-        if set(row.keys()) != set(self.fieldnames):
-            # New fields appeared, need to close and reopen with extended fieldnames
-            self.fieldnames = list(set(self.fieldnames) | set(row.keys()))
-            # Note: In production, you might want to handle this differently
-        
+        # Write row - DictWriter will handle extra fields via extrasaction='ignore'
+        # and will fill missing fields with empty strings
         self.csv_writer.writerow(row)
         self.message_count += 1
         self.stats['messages_logged'] += 1
