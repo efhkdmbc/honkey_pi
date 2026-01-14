@@ -2,6 +2,8 @@
 
 Integrated NMEA 2000 reader for boat analytics with Raspberry Pi Zero, USB-CAN-A interface, and Inky pHAT display.
 
+<img width="364" height="645" alt="image" src="https://github.com/user-attachments/assets/b049045f-d037-4ea5-a85e-08d1fa5ffea6" />
+
 ## Overview
 
 Honkey Pi is a complete software stack for the Raspberry Pi Zero that:
