@@ -55,8 +55,15 @@ class InkyDisplay:
                 if self.rotation:
                     self.display.set_rotation(self.rotation)
                 # Use auto-detected resolution instead of hard-coded values
-                self.width, self.height = self.display.resolution
-                print(f"Initialized Inky pHAT display: {self.display.resolution} ({self.display.colour})")
+                detected_width, detected_height = self.display.resolution
+                # Validate that resolution values are positive integers
+                if detected_width > 0 and detected_height > 0:
+                    self.width = detected_width
+                    self.height = detected_height
+                    print(f"Initialized Inky pHAT display: {self.display.resolution} ({self.display.colour})")
+                else:
+                    print(f"Warning: Invalid display resolution detected: {self.display.resolution}")
+                    print(f"Using default dimensions: {self.width}x{self.height}")
             except Exception as e:
                 print(f"Error initializing display: {e}")
                 print(f"Falling back to simulated display with default dimensions: {self.width}x{self.height}")
