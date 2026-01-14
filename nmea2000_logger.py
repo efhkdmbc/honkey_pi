@@ -48,7 +48,12 @@ class NMEA2000DataLogger:
             self.data_directory.mkdir(parents=True, exist_ok=True)
         except OSError as e:
             # Catch permission-related errors
-            if e.errno in (errno.EACCES, errno.EPERM):
+            is_permission_error = (
+                e.errno in (errno.EACCES, errno.EPERM) or 
+                isinstance(e, PermissionError)
+            )
+            
+            if is_permission_error:
                 try:
                     current_user = getpass.getuser()
                 except Exception:
