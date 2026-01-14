@@ -130,7 +130,7 @@ def test_display():
     """Test the Inky pHAT display"""
     print("Testing Inky pHAT Display...")
     
-    display = InkyDisplay(color="red")
+    display = InkyDisplay(color="red", cs_pin=7)  # Use GPIO7 (CE1) by default
     
     # Sample statistics
     stats = {
@@ -150,7 +150,7 @@ def test_bootup_screen():
     """Test the bootup screen functionality"""
     print("Testing Bootup Screen...")
     
-    display = InkyDisplay(color="red")
+    display = InkyDisplay(color="red", cs_pin=7)  # Use GPIO7 (CE1) by default
     
     # Test with actual bootup screen image
     result = display.show_bootup_screen("bootup screen.JPG")

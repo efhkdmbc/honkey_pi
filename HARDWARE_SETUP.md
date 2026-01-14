@@ -234,7 +234,7 @@ NMEA 2000 Network (boat)
 Inky pHAT uses these pins:
 - 3.3V Power (Pin 1, 17)
 - GND (Pin 6, 9, 14, 20, 25, 30, 34, 39)
-- SPI: MOSI, MISO, SCLK, CE0 (Pins 19, 21, 23, 24)
+- SPI: MOSI, MISO, SCLK, CE0/CE1 (Pins 19, 21, 23, 24 or 26)
 - I2C: SDA, SCL (Pins 3, 5)
 - Additional GPIO for reset and DC
 
@@ -243,3 +243,32 @@ USB-CAN-A uses:
 
 Do not use conflicting GPIO pins for other purposes.
 ```
+
+### SPI Chip Select Configuration (GPIO8 Conflict Resolution)
+
+**Important Note for Waveshare USB-CAN-A users:**
+
+By default, the Inky v2/v3 displays use GPIO8 (SPI CE0) as the chip select pin. When using the Waveshare USB-CAN-A interface together with an Inky display, there can be resource conflicts on the SPI bus, particularly with GPIO8 being claimed by spi0 CS0.
+
+**Solution:**
+
+The Honkey Pi software is configured to use **GPIO7 (SPI CE1)** instead of GPIO8 (SPI CE0) as the chip select pin for Inky v2/v3 displays. This prevents resource conflicts when multiple SPI devices are on the bus.
+
+In `config.yaml`:
+```yaml
+display:
+  cs_pin: 7  # Use GPIO7 (CE1) instead of GPIO8 (CE0) to avoid conflicts
+```
+
+**Hardware Connection:**
+
+- The Inky pHAT must be connected to use CE1 instead of CE0
+- On the Raspberry Pi GPIO header:
+  - CE0 is on Pin 24 (GPIO8) - **NOT used to avoid conflict**
+  - CE1 is on Pin 26 (GPIO7) - **Used by default configuration**
+
+The Inky pHAT connects directly to the GPIO header, and the SPI chip select is controlled via software configuration. No hardware modifications are needed; the library handles the pin selection.
+
+**For other Inky display types:**
+
+Older Inky displays (v1) that don't use the UC8159 driver cannot have their chip select pin changed and will continue to use GPIO8. If you're using these displays with the USB-CAN-A, you may experience conflicts. Consider upgrading to Inky v2/v3 displays which support configurable chip select pins.

@@ -43,7 +43,8 @@ class HonkeyPi:
         
         self.display = InkyDisplay(
             color=self.config['display']['color'],
-            rotation=self.config['display']['rotation']
+            rotation=self.config['display']['rotation'],
+            cs_pin=self.config['display'].get('cs_pin', 7)  # Default to GPIO7 (CE1)
         )
         
         self.display_update_interval = self.config['display']['update_interval']
@@ -76,7 +77,8 @@ class HonkeyPi:
                 'color': 'red',
                 'update_interval': 30,
                 'rotation': 0,
-                'bootup_screen_duration': 30
+                'bootup_screen_duration': 30,
+                'cs_pin': 7  # GPIO7 (CE1) to avoid GPIO8 (CE0) conflict
             },
             'metrics': {
                 'track_top_speed': True,
@@ -206,7 +208,7 @@ def main():
     # Test display mode
     if args.test_display:
         print("Testing display...")
-        display = InkyDisplay()
+        display = InkyDisplay(cs_pin=7)  # Use GPIO7 (CE1) by default
         test_stats = {
             'max_speed': 12.5,
             'messages_logged': 42000,
