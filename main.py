@@ -75,7 +75,8 @@ class HonkeyPi:
                 'type': 'inky_phat',
                 'color': 'red',
                 'update_interval': 30,
-                'rotation': 0
+                'rotation': 0,
+                'bootup_screen_duration': 30
             },
             'metrics': {
                 'track_top_speed': True,
@@ -132,6 +133,15 @@ class HonkeyPi:
     def start(self) -> None:
         """Start the application"""
         print("Starting Honkey Pi NMEA2000 Reader...")
+        
+        # Show bootup screen
+        bootup_duration = self.config['display']['bootup_screen_duration']
+        print(f"Displaying bootup screen for {bootup_duration} seconds...")
+        if self.display.show_bootup_screen():
+            time.sleep(bootup_duration)
+        else:
+            print("Skipping bootup screen delay due to display error")
+        
         self.running.set()
         
         # Start display update thread
