@@ -3,6 +3,8 @@ Tests for CSV format compliance and 1 Hz logging.
 """
 
 import csv
+import os
+import sys
 import time
 import unittest
 from pathlib import Path
@@ -288,6 +290,32 @@ class TestNMEA2000Logger(unittest.TestCase):
             
         finally:
             logger.close()
+    
+    def test_permission_error_handling(self):
+        """Test that permission errors are caught and reported with helpful message"""
+        # Try to create logger in a directory we can't write to
+        # On Unix systems, /root is typically not writable by normal users
+        # Skip test if running as root/administrator
+        if sys.platform == 'win32':
+            # On Windows, skip this test as it's difficult to test permissions portably
+            self.skipTest("Permission test not applicable on Windows")
+        elif hasattr(os, 'geteuid') and os.geteuid() == 0:
+            self.skipTest("Test requires non-root user")
+        
+        unwritable_dir = "/root/honkey_pi_test_permission"
+        
+        with self.assertRaises(PermissionError) as context:
+            logger = NMEA2000DataLogger(
+                data_directory=unwritable_dir,
+                filename_format="test_%Y%m%d.csv",
+                flush_interval=1
+            )
+        
+        # Check that error message contains helpful information
+        error_message = str(context.exception)
+        self.assertIn("Cannot create data directory", error_message)
+        self.assertIn("Possible solutions", error_message)
+        self.assertIn("config.yaml", error_message)
 
 
 def run_tests():
