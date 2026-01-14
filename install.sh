@@ -77,15 +77,20 @@ fi
 # Set ownership
 chown -R "$INSTALL_USER":"$INSTALL_USER" "$INSTALL_DIR"
 
-# Install Python dependencies
-echo "Installing Python dependencies..."
-su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && pip3 install -r requirements.txt"
+# Create Python virtual environment
+echo "Creating Python virtual environment..."
+su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && python3 -m venv venv"
+
+# Install Python dependencies in virtual environment
+echo "Installing Python dependencies in virtual environment..."
+su - "$INSTALL_USER" -c "cd \"$INSTALL_DIR\" && venv/bin/pip install -r requirements.txt"
 
 # Install systemd service
 echo "Installing systemd service..."
-# Update service file with the correct user and paths
+# Update service file with the correct user, paths, and virtual environment Python
 sed -e "s|User=pi|User=$INSTALL_USER|g" \
     -e "s|/home/pi/|/home/$INSTALL_USER/|g" \
+    -e "s|/usr/bin/python3|/home/$INSTALL_USER/honkey_pi/venv/bin/python3|g" \
     "$INSTALL_DIR/honkey_pi.service" > /etc/systemd/system/honkey_pi.service
 systemctl daemon-reload
 
@@ -107,7 +112,7 @@ echo "To view logs:"
 echo "  sudo journalctl -u honkey_pi -f"
 echo ""
 echo "To test the display:"
-echo "  cd $INSTALL_DIR && python3 main.py --test-display"
+echo "  cd $INSTALL_DIR && venv/bin/python3 main.py --test-display"
 echo ""
 echo "Note: You may need to reboot for CAN interface changes to take effect"
 echo "========================================="

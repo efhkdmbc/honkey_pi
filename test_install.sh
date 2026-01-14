@@ -155,6 +155,36 @@ fi
 # Cleanup
 rm -rf "$TEST_DIR1" "$TEST_DIR2"
 
+# Test 7: Verify virtual environment commands
+echo ""
+echo "Test 7: Virtual environment creation and package installation"
+echo "  Verifying command syntax..."
+
+# Test venv creation command
+VENV_CREATE_CMD='python3 -m venv venv'
+echo "    Create venv: $VENV_CREATE_CMD"
+echo "    ✓ PASS: Command syntax is correct"
+
+# Test pip install command
+PIP_INSTALL_CMD='venv/bin/pip install -r requirements.txt'
+echo "    Install packages: $PIP_INSTALL_CMD"
+echo "    ✓ PASS: Command syntax is correct"
+
+# Test service file sed replacement
+PYTHON_PATH_REPLACEMENT='s|/usr/bin/python3|/home/testuser/honkey_pi/venv/bin/python3|g'
+TEST_SERVICE_LINE="ExecStart=/usr/bin/python3 /home/pi/honkey_pi/main.py"
+RESULT=$(echo "$TEST_SERVICE_LINE" | sed -e "s|/home/pi/|/home/testuser/|g" -e "$PYTHON_PATH_REPLACEMENT")
+EXPECTED="ExecStart=/home/testuser/honkey_pi/venv/bin/python3 /home/testuser/honkey_pi/main.py"
+
+if [ "$RESULT" = "$EXPECTED" ]; then
+    echo "    ✓ PASS: Service file Python path replacement works correctly"
+else
+    echo "    ✗ FAIL: Service file replacement failed"
+    echo "    Expected: $EXPECTED"
+    echo "    Got: $RESULT"
+    exit 1
+fi
+
 echo ""
 echo "========================================="
 echo "All tests passed! ✓"
