@@ -293,6 +293,11 @@ class TestNMEA2000Logger(unittest.TestCase):
         """Test that permission errors are caught and reported with helpful message"""
         # Try to create logger in a directory we can't write to
         # On Unix systems, /root is typically not writable by normal users
+        # If running as root, skip this test
+        import os
+        if os.geteuid() == 0:
+            self.skipTest("Test requires non-root user")
+        
         unwritable_dir = "/root/honkey_pi_test_permission"
         
         with self.assertRaises(PermissionError) as context:

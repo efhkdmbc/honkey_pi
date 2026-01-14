@@ -5,6 +5,7 @@ with 1 Hz sampling rate and fixed column format.
 """
 
 import csv
+import errno
 import os
 import time
 import threading
@@ -45,8 +46,8 @@ class NMEA2000DataLogger:
         try:
             self.data_directory.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            # Catch permission-related errors (errno 13 = EACCES, errno 1 = EPERM)
-            if e.errno in (13, 1):
+            # Catch permission-related errors
+            if e.errno in (errno.EACCES, errno.EPERM):
                 current_user = os.environ.get('USER', 'current user')
                 error_msg = (
                     f"\n{'='*70}\n"
